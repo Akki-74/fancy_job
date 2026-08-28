@@ -1,8 +1,8 @@
-#!/usr/bin/env python3
 import os
 import random
 import subprocess
-from datetime import datetime
+import sys
+from datetime import datetime, date, timedelta
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
 os.chdir(script_dir)
@@ -76,37 +76,58 @@ def git_push():
 
 
 def update_cron_with_random_time():
-    # Generate random hour (0-23) and minute (0-59)
+    # Generate a random time for tomorrow
     random_hour = random.randint(0, 23)
     random_minute = random.randint(0, 59)
 
-    # Define the new cron job command
-    new_cron_command = f"{random_minute} {random_hour} * * * cd {script_dir} && python3 {os.path.join(script_dir, 'update_number.py')}\n"
+    # Task Scheduler task name
+    task_name = "DailyNumberIncrementer"
 
-    # Get the current crontab
-    cron_file = "/tmp/current_cron"
-    os.system(
-        f"crontab -l > {cron_file} 2>/dev/null || true"
-    )  # Save current crontab, or create a new one if empty
+    # Path to Python executable currently running this script
+    python_exe = sys.executable
 
-    # Update the crontab file
-    with open(cron_file, "r") as file:
-        lines = file.readlines()
+    # Path to this script
+    script_path = os.path.abspath(__file__)
 
-    with open(cron_file, "w") as file:
-        for line in lines:
-            # Remove existing entry for `update_number.py` if it exists
-            if "update_number.py" not in line:
-                file.write(line)
-        # Add the new cron job at the random time
-        file.write(new_cron_command)
+    # Tomorrow's date
+    tomorrow = date.today() + timedelta(days=1)
 
-    # Load the updated crontab
-    os.system(f"crontab {cron_file}")
-    os.remove(cron_file)
+    # Format time for Windows Task Scheduler
+    start_time = f"{random_hour:02d}:{random_minute:02d}"
+    start_date = tomorrow.strftime("%m/%d/%Y")
 
-    print(f"Cron job updated to run at {random_hour}:{random_minute} tomorrow.")
+    # Remove the existing task if it exists
+    subprocess.run(
+        ["schtasks", "/delete", "/tn", task_name, "/f"],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
 
+    # Create the task for tomorrow
+    result = subprocess.run(
+        [
+            "schtasks",
+            "/create",
+            "/tn", task_name,
+            "/tr", f'"{python_exe}" "{script_path}"',
+            "/sc", "once",
+            "/st", start_time,
+            "/sd", start_date,
+            "/f",
+        ],
+        capture_output=True,
+        text=True,
+    )
+
+    if result.returncode == 0:
+        print(
+            f"Windows Task Scheduler updated to run tomorrow "
+            f"at {random_hour:02d}:{random_minute:02d}."
+        )
+    else:
+        print("Error updating Windows Task Scheduler:")
+        print(result.stderr)
+    
 
 def main():
     try:
