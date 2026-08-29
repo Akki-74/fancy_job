@@ -1,8 +1,6 @@
 import os
-import random
 import subprocess
-import sys
-from datetime import datetime, date, timedelta
+from datetime import datetime
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
 os.chdir(script_dir)
@@ -54,80 +52,29 @@ def generate_random_commit_message():
 
 
 def git_commit():
-    # Stage the changes
-    subprocess.run(["git", "add", "number.txt"])
-    # Create commit with current date
+    subprocess.run(
+        ["git", "add", "number.txt"],
+        check=True
+    )
+
     if "FANCY_JOB_USE_LLM" in os.environ:
         commit_message = generate_random_commit_message()
     else:
         date = datetime.now().strftime("%Y-%m-%d")
         commit_message = f"Update number: {date}"
-    subprocess.run(["git", "commit", "-m", commit_message])
 
+    subprocess.run(
+        ["git", "commit", "-m", commit_message],
+        check=True
+    )
 
 def git_push():
-    # Push the committed changes to GitHub
-    result = subprocess.run(["git", "push"], capture_output=True, text=True)
-    if result.returncode == 0:
-        print("Changes pushed to GitHub successfully.")
-    else:
-        print("Error pushing to GitHub:")
-        print(result.stderr)
-
-
-def update_cron_with_random_time():
-    # Generate a random time for tomorrow
-    random_hour = random.randint(0, 23)
-    random_minute = random.randint(0, 59)
-
-    # Task Scheduler task name
-    task_name = "DailyNumberIncrementer"
-
-    # Path to Python executable currently running this script
-    python_exe = sys.executable
-
-    # Path to this script
-    script_path = os.path.abspath(__file__)
-
-    # Tomorrow's date
-    tomorrow = date.today() + timedelta(days=1)
-
-    # Format time for Windows Task Scheduler
-    start_time = f"{random_hour:02d}:{random_minute:02d}"
-    start_date = tomorrow.strftime("%m/%d/%Y")
-
-    # Remove the existing task if it exists
     subprocess.run(
-        ["schtasks", "/delete", "/tn", task_name, "/f"],
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
+        ["git", "push"],
+        check=True
     )
 
-    # Create the task for tomorrow
-    result = subprocess.run(
-        [
-            "schtasks",
-            "/create",
-            "/tn", task_name,
-            "/tr", f'"{python_exe}" "{script_path}"',
-            "/sc", "once",
-            "/st", start_time,
-            "/sd", start_date,
-            "/f",
-        ],
-        capture_output=True,
-        text=True,
-    )
-
-    if result.returncode == 0:
-        print(
-            f"Windows Task Scheduler updated to run tomorrow "
-            f"at {random_hour:02d}:{random_minute:02d}."
-        )
-    else:
-        print("Error updating Windows Task Scheduler:")
-        print(result.stderr)
-    
+    print("Changes pushed to GitHub successfully.")
 
 def main():
     try:
@@ -136,7 +83,6 @@ def main():
         write_number(new_number)
         git_commit()
         git_push()
-        update_cron_with_random_time()
     except Exception as e:
         print(f"Error: {str(e)}")
         exit(1)
