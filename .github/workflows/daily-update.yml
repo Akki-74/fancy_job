@@ -2,12 +2,16 @@ name: Daily Number Update
 
 on:
   schedule:
-    - cron: "0 12 * * *"
+    - cron: "*/30 * * * *"
 
   workflow_dispatch:
 
 permissions:
   contents: write
+
+concurrency:
+  group: daily-number-update
+  cancel-in-progress: false
 
 jobs:
   update-number:
@@ -15,10 +19,12 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.12"
 
@@ -27,5 +33,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-      - name: Run Fancy Job
-        run: python update_number.py
+      - name: Run Scheduler
+        run: python scheduler/scheduler.py
